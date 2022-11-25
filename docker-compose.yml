@@ -1,0 +1,59 @@
+version: '3.3'
+
+# Creating application network
+networks:
+    app-network:
+        driver: bridge
+
+volumes:
+    redisdata:
+        driver: local
+
+services:
+    php:
+        build: ./docker/php/
+        container_name: user-service-api
+        volumes:
+            - .:/var/www/html
+            - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+        networks:
+            - app-network
+    #Nginx service
+    nginx:
+        image: nginx:latest
+        ports:
+            - 8888:80
+            #  - "4431:443"
+        volumes:
+            - .:/var/www/html
+            -  ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        volumes_from:
+            - php
+        networks:
+            - app-network
+    #MySQL Service
+    db:
+        image: mysql:8.0.29
+        container_name: user-service-db
+        restart: always
+        ports:
+            - "3307:3306"
+        environment:
+            - "MYSQL_ROOT_PASSWORD=common404"
+            - "MYSQL_DATABASE=app_user"
+        volumes:
+            - ${BACKUP_DATA_PATH}/mysql4:/var/lib/mysql
+        networks:
+            - app-network
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: user_service_phpmyadmin
+        ports:
+            - 8801:80
+        environment:
+            PMA_HOST: db
+            UPLOAD_LIMIT: 1000M
+        depends_on:
+            - db
+        networks:
+            - app-network
